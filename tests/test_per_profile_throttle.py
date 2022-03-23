@@ -22,9 +22,16 @@ def set_time(timer, iso):
 
 
 @pytest.mark.parametrize("persistent", [True, False])
-def test_profile_throttle(persistent):
+def test_profile_throttle(tmp_path, persistent):
+    path = tmp_path / "quote.db"
     pr = ProfileThrottleRule(
-        {"per_day": 3, "per_hour": 1, "persistent": persistent, "rule_id": "rid"}
+        {
+            "per_day": 3,
+            "per_hour": 1,
+            "persistent": persistent,
+            "rule_id": "rid",
+            "db-file": path,
+        }
     )
     pr.clear_quota(ProfileInfo(profile_id=b"pid", profile_words=[]))
     with unittest.mock.patch("policy_basics.per_profile_throttle.Timer") as timer:
@@ -47,11 +54,34 @@ def test_profile_throttle(persistent):
         # not 4th
         assert not pr._approve_profile_request(b"pid")
 
-        # new day
+        # 2nd day
         set_time(timer, "2022-03-10 00:00Z")
         assert pr._approve_profile_request(b"pid")
 
+        # 2nd day same hour
+        assert not pr._approve_profile_request(b"pid")
+
+        # 2nd day new hours
+        set_time(timer, "2022-03-10 01:00Z")
+        assert pr._approve_profile_request(b"pid")
+        set_time(timer, "2022-03-10 02:00Z")
+        assert pr._approve_profile_request(b"pid")
+        set_time(timer, "2022-03-10 03:00Z")
+        assert not pr._approve_profile_request(b"pid")
+
         # top level
+        assert not pr.approve_request(
+            ApprovalRequest(
+                request_type=None,
+                device_id=b"pid",
+                profile=ProfileInfo(profile_id=b"pid", profile_words=[]),
+                auth_meta=None,
+                cryptographic_id=None,
+            )
+        )
+
+        # 3rd day
+        set_time(timer, "2022-03-11 00:00Z")
         assert pr.approve_request(
             ApprovalRequest(
                 request_type=None,
@@ -81,25 +111,34 @@ def test_persistent():
     assert pr2._approve_profile_request(b"pid")
 
 
-@pytest.mark.parametrize("persistent", [0, 1])
-def test_throttle_db_atomic(tmp_path, persistent):
-    if persistent:
-        db = ProfileThrottleDb(
-            {"persistent": True, "db-file": tmp_path / "quote.db", "rule_id": "rid"}
+@pytest.mark.parametrize("persistent", [False, True])
+def test_throttle_atomic(tmp_path, persistent):
+    path = tmp_path / "quote.db"
+    with unittest.mock.patch("policy_basics.per_profile_throttle.Timer") as timer:
+        set_time(timer, "2022-03-09 17:00Z")
+        pr = ProfileThrottleRule(
+            {
+                "per_day": 100,
+                "per_hour": 100,
+                "persistent": persistent,
+                "rule_id": "rid",
+                "db-file": path,
+            }
         )
-    else:
-        db = ProfileThrottleDb({"persistent": False, "rule_id": "rid"})
 
-    thread_pool = ThreadPool(10)
+        thread_pool = ThreadPool(10)
 
-    cnt = 100
+        cnt = 100
+        approves = 0
 
-    def sets(_):
-        return db.increment("rid", b"pid").day_cnt
+        def sets(_):
+            nonlocal approves
+            if pr._approve_profile_request(b"pid"):
+                approves += 1
 
-    assert all(ok for ok in thread_pool.map(sets, range(cnt)))
+        thread_pool.map(sets, range(cnt))
 
-    assert db.get("rid", b"pid").day_cnt == cnt
+        assert approves == cnt
 
 
 def test_throttle_db_corruption(tmp_path):
@@ -108,7 +147,7 @@ def test_throttle_db_corruption(tmp_path):
     with path.open("w") as db_fh:
         db_fh.write("junk")
     db = ProfileThrottleDb({"persistent": True, "db-file": path, "rule_id": "rid"})
-    assert db.increment("rid", b"pid").day_cnt == 1
+    assert db.increment("rid", b"pid", db.get("rid", b"pid")).day_cnt == 1
 
 
 def test_throttle_db_schema_bad(tmp_path):
@@ -117,7 +156,7 @@ def test_throttle_db_schema_bad(tmp_path):
     with notanorm.SqliteDb(str(path)) as db:
         db.query("create table %s (ajunk, bjunk)" % FileDb.TABLE_NAME)
     db = ProfileThrottleDb({"persistent": True, "db-file": path, "rule_id": "rid"})
-    assert db.increment("rid", b"pid").day_cnt == 1
+    assert db.increment("rid", b"pid", db.get("rid", b"pid")).day_cnt == 1
 
 
 @pytest.fixture()
@@ -129,20 +168,20 @@ def throt_db(tmp_path):
 
 def test_throttle_db_weird_data(throt_db):
     bad_dct = {"tm": None, "hr": "wot", "dy": 3}
-    assert throt_db.increment("rid", b"pid").day_cnt == 1
+    assert throt_db.increment("rid", b"pid", throt_db.get("rid", b"pid")).day_cnt == 1
     throt_db.db.set(
         ProfileThrottleDb._get_db_key("rid", b"pid"), ProfileCount._dict_to_str(bad_dct)
     )
-    assert throt_db.increment("rid", b"pid").day_cnt == 1
+    assert throt_db.increment("rid", b"pid", throt_db.get("rid", b"pid")).day_cnt == 1
 
 
 def test_throttle_db_schema_change(throt_db):
     bad_dct = {"tim": 1, "hr": 1, "dy": 3}
-    assert throt_db.increment("rid", b"pid").day_cnt == 1
+    assert throt_db.increment("rid", b"pid", throt_db.get("rid", b"pid")).day_cnt == 1
     throt_db.db.set(
         ProfileThrottleDb._get_db_key("rid", b"pid"), ProfileCount._dict_to_str(bad_dct)
     )
-    assert throt_db.increment("rid", b"pid").day_cnt == 1
+    assert throt_db.increment("rid", b"pid", throt_db.get("rid", b"pid")).day_cnt == 1
 
 
 def test_end_to_end():

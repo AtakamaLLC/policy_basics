@@ -6,7 +6,6 @@ import dateutil.parser
 from atakama import RulePlugin, ApprovalRequest
 
 log = logging.getLogger(__name__)
-log.setLevel(logging.INFO)
 
 LOCAL_TIMEZONE = datetime.now().astimezone().tzinfo
 
