@@ -45,7 +45,6 @@ class ProfileCount:
             if reqhour != curhour:
                 hour_cnt = 0
 
-        self._ts = int(timestamp or Timer.time())
         self._ts = Timer.time()
         self.hour_cnt = int(hour_cnt)
         self.day_cnt = int(day_cnt)
