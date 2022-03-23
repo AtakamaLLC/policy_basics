@@ -1,8 +1,12 @@
+import logging
 from typing import Optional, Set, Iterable
 from datetime import date, time, datetime
 
 import dateutil.parser
 from atakama import RulePlugin, ApprovalRequest
+
+log = logging.getLogger(__name__)
+log.setLevel(logging.INFO)
 
 LOCAL_TIMEZONE = datetime.now().astimezone().tzinfo
 
@@ -102,4 +106,11 @@ class TimeRangeRule(RulePlugin):
 
     def approve_request(self, request: ApprovalRequest) -> Optional[bool]:
         now = datetime.now(tz=LOCAL_TIMEZONE)
-        return self.times.in_range(now)
+        res = self.times.in_range(now)
+        log.debug(
+            "TimeRangeRule.approve_request rule_id=%s now=%s res=%s",
+            self.rule_id,
+            now,
+            res,
+        )
+        return res

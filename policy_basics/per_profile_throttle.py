@@ -4,10 +4,13 @@ import time
 from datetime import datetime
 from threading import RLock
 
-import logging as log
+import logging
 from atakama import RulePlugin, ApprovalRequest, ProfileInfo
 
 from policy_basics.simple_db import AbstractDb, FileDb, MemoryDb
+
+log = logging.getLogger(__name__)
+log.setLevel(logging.INFO)
 
 LOCAL_TIMEZONE = datetime.now().astimezone().tzinfo
 
@@ -137,7 +140,6 @@ class ProfileThrottleRule(RulePlugin):
 
     def __init__(self, args):
         super().__init__(args)
-        self.rule_id = args["rule_id"]
         self.per_hour = args.get("per_hour", INFINITE)
         self.per_day = args.get("per_day", INFINITE)
         self.db = ProfileThrottleDb(args)
@@ -150,6 +152,12 @@ class ProfileThrottleRule(RulePlugin):
         return self._within_quota(pc)
 
     def _within_quota(self, pc):
+        log.debug(
+            "ProfileThrottleRule._within_quota rule_id=%s day_cnt=%i hour_cnt=%i",
+            self.rule_id,
+            pc.day_cnt,
+            pc.hour_cnt,
+        )
         return (self.per_day == INFINITE or pc.day_cnt <= self.per_day) and (
             self.per_hour == INFINITE or pc.hour_cnt <= self.per_hour
         )

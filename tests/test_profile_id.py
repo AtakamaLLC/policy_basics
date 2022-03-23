@@ -11,7 +11,9 @@ from policy_basics.profile_id import (
 def test_profile_id_match():
     pid = os.urandom(16)
     hexpid = pid.hex()
-    pr = ProfileIdRule({"profile_ids": ["word list here is ok", hexpid]})
+    pr = ProfileIdRule(
+        {"profile_ids": ["word list here is ok", hexpid], "rule_id": "rid"}
+    )
     assert pr.approve_request(
         ApprovalRequest(
             request_type=None,
