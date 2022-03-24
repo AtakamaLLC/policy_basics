@@ -118,8 +118,8 @@ def test_throttle_atomic(tmp_path, persistent):
         set_time(timer, "2022-03-09 17:00Z")
         pr = ProfileThrottleRule(
             {
-                "per_day": 100,
-                "per_hour": 100,
+                "per_day": 50,
+                "per_hour": 50,
                 "persistent": persistent,
                 "rule_id": "rid",
                 "db-file": path,
@@ -138,7 +138,7 @@ def test_throttle_atomic(tmp_path, persistent):
 
         thread_pool.map(sets, range(cnt))
 
-        assert approves == cnt
+        assert approves == 50
 
 
 def test_throttle_db_corruption(tmp_path):

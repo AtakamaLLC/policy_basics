@@ -150,15 +150,16 @@ class ProfileThrottleRule(RulePlugin):
             within = self._within_quota(pc)
             if within:
                 pc = self.db.increment(self.rule_id, profile_id, pc)
-        return within
-
-    def _within_quota(self, pc):
         log.debug(
-            "ProfileThrottleRule._within_quota rule_id=%s day_cnt=%i hour_cnt=%i",
+            "ProfileThrottleRule._approve_profile_request rule_id=%s within=%s day_cnt=%i hour_cnt=%i",
             self.rule_id,
+            within,
             pc.day_cnt,
             pc.hour_cnt,
         )
+        return within
+
+    def _within_quota(self, pc):
         return (self.per_day == INFINITE or pc.day_cnt < self.per_day) and (
             self.per_hour == INFINITE or pc.hour_cnt < self.per_hour
         )
