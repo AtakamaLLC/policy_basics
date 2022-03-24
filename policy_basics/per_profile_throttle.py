@@ -152,7 +152,8 @@ class ProfileThrottleRule(RulePlugin):
             if within:
                 pc = self.db.increment(self.rule_id, profile_id, pc)
         log.debug(
-            "ProfileThrottleRule._approve_profile_request rule_id=%s within=%s day_cnt=%i hour_cnt=%i",
+            "ProfileThrottleRule._approve_profile_request rule_id=%s within=%s "
+            "day_cnt=%i hour_cnt=%i",
             self.rule_id,
             within,
             pc.day_cnt,
