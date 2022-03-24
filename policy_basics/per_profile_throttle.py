@@ -10,6 +10,7 @@ from atakama import RulePlugin, ApprovalRequest, ProfileInfo
 from policy_basics.simple_db import AbstractDb, FileDb, MemoryDb
 
 log = logging.getLogger(__name__)
+log.setLevel(logging.INFO)
 
 LOCAL_TIMEZONE = datetime.now().astimezone().tzinfo
 
