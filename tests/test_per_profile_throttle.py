@@ -95,6 +95,28 @@ def test_profile_throttle(tmp_path, persistent):
             )
         )
 
+        assert not pr._approve_profile_request(b"pid")
+
+        # 4th day but same hour of day
+        set_time(timer, "2022-03-12 00:00Z")
+        assert pr._approve_profile_request(b"pid")
+
+        # Minutes later
+        set_time(timer, "2022-03-12 00:08Z")
+        assert not pr._approve_profile_request(b"pid")
+
+        # Another profile
+        assert pr._approve_profile_request(b"pid2")
+        assert not pr._approve_profile_request(b"pid")
+        set_time(timer, "2022-03-12 03:00Z")
+        assert pr._approve_profile_request(b"pid2")
+        assert pr._approve_profile_request(b"pid")
+        set_time(timer, "2022-03-12 04:00Z")
+        assert pr._approve_profile_request(b"pid")
+        assert pr._approve_profile_request(b"pid2")
+        assert not pr._approve_profile_request(b"pid")
+        assert not pr._approve_profile_request(b"pid2")
+
 
 def test_persistent():
     pr = ProfileThrottleRule({"per_day": 3, "persistent": True, "rule_id": "rid"})
