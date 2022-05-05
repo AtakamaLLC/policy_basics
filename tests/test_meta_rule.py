@@ -58,6 +58,18 @@ def test_paths():
     assert pr.approve_request(meta("some/sub/path", complete=False))
 
 
+def test_extra_slashes():
+    pr = MetaRule(
+        {
+            "paths": ["/sub/"],
+            "rule_id": "rid",
+        }
+    )
+    assert pr.approve_request(meta("sub/file"))
+    assert pr.approve_request(meta("sub/two/file"))
+    assert not pr.approve_request(meta("sub2/file"))
+
+
 def test_glob_basename():
     pr = MetaRule({"paths": ["basename.*"], "rule_id": "rid"})
     assert pr.approve_request(meta("basename.xxx"))
