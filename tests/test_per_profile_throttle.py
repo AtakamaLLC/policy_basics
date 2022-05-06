@@ -44,7 +44,13 @@ def test_profile_throttle(tmp_path, persistent):
         pi = ProfileInfo(profile_id=b"pid", profile_words=[])
         assert not pr.at_quota(pi)
         # same hour
+
+        # approve_request call alone does not increment! Muse use_quota
         assert pr._approve_profile_request(b"pid")
+        assert not pr.at_quota(pi)
+        assert pr._approve_profile_request(b"pid")
+
+        pr._use_quota(b"pid")
         assert pr.at_quota(pi)
         assert not pr._approve_profile_request(b"pid")
 
@@ -52,25 +58,25 @@ def test_profile_throttle(tmp_path, persistent):
         set_time(timer, "2022-03-09 18:00Z")
 
         # 3rd req ok for the day
-        assert pr._approve_profile_request(b"pid")
+        assert pr._approve_and_use_quota(b"pid")
 
         # not 4th
-        assert not pr._approve_profile_request(b"pid")
+        assert not pr._approve_and_use_quota(b"pid")
 
         # 2nd day
         set_time(timer, "2022-03-10 00:00Z")
-        assert pr._approve_profile_request(b"pid")
+        assert pr._approve_and_use_quota(b"pid")
 
         # 2nd day same hour
-        assert not pr._approve_profile_request(b"pid")
+        assert not pr._approve_and_use_quota(b"pid")
 
         # 2nd day new hours
         set_time(timer, "2022-03-10 01:00Z")
-        assert pr._approve_profile_request(b"pid")
+        assert pr._approve_and_use_quota(b"pid")
         set_time(timer, "2022-03-10 02:00Z")
-        assert pr._approve_profile_request(b"pid")
+        assert pr._approve_and_use_quota(b"pid")
         set_time(timer, "2022-03-10 03:00Z")
-        assert not pr._approve_profile_request(b"pid")
+        assert not pr._approve_and_use_quota(b"pid")
 
         # top level
         assert not pr.approve_request(
@@ -85,37 +91,37 @@ def test_profile_throttle(tmp_path, persistent):
 
         # 3rd day
         set_time(timer, "2022-03-11 00:00Z")
-        assert pr.approve_request(
-            ApprovalRequest(
-                request_type=None,
-                device_id=b"pid",
-                profile=ProfileInfo(profile_id=b"pid", profile_words=[]),
-                auth_meta=None,
-                cryptographic_id=None,
-            )
+        req = ApprovalRequest(
+            request_type=None,
+            device_id=b"pid",
+            profile=ProfileInfo(profile_id=b"pid", profile_words=[]),
+            auth_meta=None,
+            cryptographic_id=None,
         )
+        assert pr.approve_request(req)
+        pr.use_quota(req)
 
-        assert not pr._approve_profile_request(b"pid")
+        assert not pr._approve_and_use_quota(b"pid")
 
         # 4th day but same hour of day
         set_time(timer, "2022-03-12 00:00Z")
-        assert pr._approve_profile_request(b"pid")
+        assert pr._approve_and_use_quota(b"pid")
 
         # Minutes later
         set_time(timer, "2022-03-12 00:08Z")
-        assert not pr._approve_profile_request(b"pid")
+        assert not pr._approve_and_use_quota(b"pid")
 
         # Another profile
-        assert pr._approve_profile_request(b"pid2")
-        assert not pr._approve_profile_request(b"pid")
+        assert pr._approve_and_use_quota(b"pid2")
+        assert not pr._approve_and_use_quota(b"pid")
         set_time(timer, "2022-03-12 03:00Z")
-        assert pr._approve_profile_request(b"pid2")
-        assert pr._approve_profile_request(b"pid")
+        assert pr._approve_and_use_quota(b"pid2")
+        assert pr._approve_and_use_quota(b"pid")
         set_time(timer, "2022-03-12 04:00Z")
-        assert pr._approve_profile_request(b"pid")
-        assert pr._approve_profile_request(b"pid2")
-        assert not pr._approve_profile_request(b"pid")
-        assert not pr._approve_profile_request(b"pid2")
+        assert pr._approve_and_use_quota(b"pid")
+        assert pr._approve_and_use_quota(b"pid2")
+        assert not pr._approve_and_use_quota(b"pid")
+        assert not pr._approve_and_use_quota(b"pid2")
 
 
 def test_persistent():
@@ -126,44 +132,14 @@ def test_persistent():
     )
     pr2.clear_quota(ProfileInfo(profile_id=b"pid", profile_words=[]))
 
-    assert pr._approve_profile_request(b"pid")
-    assert pr._approve_profile_request(b"pid")
-    assert pr._approve_profile_request(b"pid")
+    assert pr._approve_and_use_quota(b"pid")
+    assert pr._approve_and_use_quota(b"pid")
+    assert pr._approve_and_use_quota(b"pid")
     pr = ProfileThrottleRule({"per_day": 3, "persistent": True, "rule_id": "rid"})
-    assert not pr._approve_profile_request(b"pid")
+    assert not pr._approve_and_use_quota(b"pid")
 
     # different rule is unaffected
-    assert pr2._approve_profile_request(b"pid")
-
-
-@pytest.mark.parametrize("persistent", [False, True])
-def test_throttle_atomic(tmp_path, persistent):
-    path = tmp_path / "quote.db"
-    with unittest.mock.patch("policy_basics.per_profile_throttle.Timer") as timer:
-        set_time(timer, "2022-03-09 17:00Z")
-        pr = ProfileThrottleRule(
-            {
-                "per_day": 50,
-                "per_hour": 50,
-                "persistent": persistent,
-                "rule_id": "rid",
-                "db-file": path,
-            }
-        )
-
-        thread_pool = ThreadPool(10)
-
-        cnt = 100
-        approves = 0
-
-        def sets(_):
-            nonlocal approves
-            if pr._approve_profile_request(b"pid"):
-                approves += 1
-
-        thread_pool.map(sets, range(cnt))
-
-        assert approves == 50
+    assert pr2._approve_and_use_quota(b"pid")
 
 
 def test_throttle_db_corruption(tmp_path):

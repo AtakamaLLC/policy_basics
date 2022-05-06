@@ -144,7 +144,6 @@ class ProfileThrottleRule(RulePlugin):
 
     def __init__(self, args):
         super().__init__(args)
-        self.__lock = RLock()
         self.per_hour = args.get("per_hour", INFINITE)
         self.per_day = args.get("per_day", INFINITE)
         self.db = ProfileThrottleDb(args)
@@ -153,11 +152,8 @@ class ProfileThrottleRule(RulePlugin):
         return self._approve_profile_request(request.profile.profile_id)
 
     def _approve_profile_request(self, profile_id):
-        with self.__lock:
-            pc = self.db.get(self.rule_id, profile_id)
-            within = self._within_quota(pc)
-            if within:
-                pc = self.db.increment(self.rule_id, profile_id, pc)
+        pc = self.db.get(self.rule_id, profile_id)
+        within = self._within_quota(pc)
         log.debug(
             "ProfileThrottleRule._approve_profile_request rule_id=%s within=%s "
             "day_cnt=%i hour_cnt=%i",
@@ -167,6 +163,26 @@ class ProfileThrottleRule(RulePlugin):
             pc.hour_cnt,
         )
         return within
+
+    def use_quota(self, request: ApprovalRequest):
+        return self._use_quota(request.profile.profile_id)
+
+    def _use_quota(self, profile_id):
+        pc = self.db.get(self.rule_id, profile_id)
+        pc = self.db.increment(self.rule_id, profile_id, pc)
+        log.debug(
+            "ProfileThrottleRule._use_quota rule_id=%s now " "day_cnt=%i hour_cnt=%i",
+            self.rule_id,
+            pc.day_cnt,
+            pc.hour_cnt,
+        )
+
+    def _approve_and_use_quota(self, profile_id):
+        # For tests
+        if self._approve_profile_request(profile_id):
+            self._use_quota(profile_id)
+            return True
+        return False
 
     def _within_quota(self, pc):
         return (self.per_day == INFINITE or pc.day_cnt < self.per_day) and (
