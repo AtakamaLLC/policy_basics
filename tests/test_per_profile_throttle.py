@@ -2,7 +2,6 @@
 # SPDX-License-Identifier: LGPL-3.0-or-later
 
 import unittest.mock
-from multiprocessing.pool import ThreadPool
 
 import atakama
 import notanorm

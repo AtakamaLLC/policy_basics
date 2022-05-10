@@ -5,7 +5,6 @@ import os
 import json
 import time
 from datetime import datetime
-from threading import RLock
 
 import logging
 from atakama import RulePlugin, ApprovalRequest, ProfileInfo
