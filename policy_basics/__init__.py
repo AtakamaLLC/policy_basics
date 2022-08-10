@@ -47,3 +47,4 @@ from .time_range import TimeRangeRule
 from .per_profile_throttle import ProfileThrottleRule
 from .profile_id import ProfileIdRule
 from .meta_str import MetaRule
+from .session_params import SessionParamsRule

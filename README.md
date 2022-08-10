@@ -48,7 +48,7 @@ profile would hit the second rule set, allowing 20 searches per hour and 100 per
 
 ## MetaRule(RulePlugin)
 
-Basic rule for exact match of file paths:
+Basic rule for exact match of profile ids:
 
 YML Arguments:
  - paths:
@@ -126,6 +126,32 @@ Example:
       profile_ids:
         - d56e89af673fe1897fdcc8
         - correct horse battery staple diamond hands
+```
+
+
+
+
+# [policy\_basics](#policy_basics).session_params
+
+
+## SessionParamsRule(RulePlugin)
+
+Container rule for session parameters.
+
+YML Arguments:
+ - max_request_count: int
+ - max_time_seconds: int
+ - end_by_time: HH:MM[am|pm] [TZ]
+
+Default is no maximum requests, 5 minute session.
+
+```
+Example:
+    - rule: session-params-rule
+    - max_request_count: 100
+    - max_time_seconds: 28800
+    - end_by_time: 5:00pm EST
+```
 ```
 
 
