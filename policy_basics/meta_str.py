@@ -11,7 +11,7 @@ MINIMUM_WORD_COUNT = 4
 
 class MetaRule(RulePlugin):
     """
-    Basic rule for exact match of profile ids:
+    Basic rule for exact match of file paths:
 
     YML Arguments:
      - paths:

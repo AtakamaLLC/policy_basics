@@ -48,7 +48,7 @@ profile would hit the second rule set, allowing 20 searches per hour and 100 per
 
 ## MetaRule(RulePlugin)
 
-Basic rule for exact match of profile ids:
+Basic rule for exact match of file paths:
 
 YML Arguments:
  - paths:
