@@ -15,9 +15,9 @@ def long_description():
 
 setup(
     name="atakama_policy_basics",
-    version="1.3.3",
+    version="1.3.4",
     python_requires=">=3.7",
-    description="Convert python docstring documentation to github markdown files",
+    description="A collection of rule plugins that allow basic policies to be implemented when using the Atakama Rule Engine.",
     packages=["policy_basics"],
     url="https://github.com/AtakamaLLC/policy_basics",
     long_description=long_description(),
